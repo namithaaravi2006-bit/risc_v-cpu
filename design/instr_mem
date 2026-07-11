@@ -1,26 +1,4 @@
 `timescale 1ns / 1ps
-//////////////////////////////////////////////////////////////////////////////////
-// Company: 
-// Engineer: 
-// 
-// Create Date: 11.07.2026 17:14:19
-// Design Name: 
-// Module Name: instr_mem
-// Project Name: 
-// Target Devices: 
-// Tool Versions: 
-// Description: 
-// 
-// Dependencies: 
-// 
-// Revision:
-// Revision 0.01 - File Created
-// Additional Comments:
-// 
-//////////////////////////////////////////////////////////////////////////////////
-
-
-`timescale 1ns / 1ps
 
 module instr_mem(
     input  wire [31:0] addr,   // Byte address
@@ -31,45 +9,41 @@ module instr_mem(
     integer i;
 
     initial begin
-        // =================================================
-        // Test Program
-        // =================================================
+        // =====================================================================
+        // Test Program: New Core Instructions (SLLI, SRLI, SRAI, SLT, SLTU)
+        // =====================================================================
 
-        // x1 = 0
-        mem[0] = 32'h00000093; // addi x1, x0, 0
+        // 1. Initialize Base Registers
+        mem[0] = 32'h00A00093; // addi x1, x0, 10    -> x1 = 10
+        mem[1] = 32'hFFF00113; // addi x2, x0, -1    -> x2 = -1 (32'hFFFFFFFF)
+        
+        // 2. Test Immediate Shifts (SLLI, SRLI, SRAI)
+        mem[2] = 32'h00209193; // slli x3, x1, 2     -> x3 = 10 << 2 = 40
+        mem[3] = 32'h00215213; // srli x4, x2, 2     -> x4 = 32'hFFFFFFFF >> 2 = 32'h3FFFFFFF
+        mem[4] = 32'h40215293; // srai x5, x2, 2     -> x5 = 32'hFFFFFFFF >>> 2 = 32'hFFFFFFFF
 
-        // x2 = 10
-        mem[1] = 32'h00A00113; // addi x2, x0, 10
+        // 3. Test Set Less Than Instructions (SLT, SLTU)
+        mem[5] = 32'h00112333; // slt  x6, x2, x1    -> x6 = (-1 < 10) ? 1 : 0  => Expected: 1 (Signed)
+        mem[6] = 32'h001133B3; // sltu x7, x2, x1    -> x7 = (32'hFFFFFFFF < 10) ? 1 : 0 => Expected: 0 (Unsigned)
 
-        // store x2 into mem[0]
-        mem[2] = 32'h0020A023; // sw x2, 0(x1)
+        // 4. Verification Check via Branching
+        mem[7] = 32'h00100413; // addi x8, x0, 1     -> x8 = 1
+        mem[8] = 32'h00640463; // beq  x8, x6, +8     -> If signed check matches (x6==1), skip failure trap
+        
+        // Failure Trap Instruction
+        mem[9] = 32'h0FF00193; // addi x3, x0, 255   -> Error flag marker (Should be skipped!)
 
-        // load mem[0] into x3
-        mem[3] = 32'h0000A183; // lw x3, 0(x1)
+        // Success Destination Target
+        mem[10] = 32'h00100493; // addi x9, x0, 1    -> x9 = 1 (Verification Success indicator)
 
-        // if x2 == x3, branch to label
-        mem[4] = 32'h00310463; // beq x2, x3, +8
-
-        // should be skipped if branch works
-        mem[5] = 32'h00118193; // addi x3, x3, 1
-
-        // jump over next instruction
-        mem[6] = 32'h008000EF; // jal x1, +8
-
-        // should be skipped if JAL works
-        mem[7] = 32'h00120213; // addi x4, x4, 1
-
-        // jump target
-        mem[8] = 32'h00500293; // addi x5, x0, 5
-
-        // =================================================
-        // Fill rest with NOPs
-        // =================================================
-        for (i = 9; i < 256; i = i + 1)
+        // =====================================================================
+        // Fill remaining spaces with safe NOP operations
+        // =====================================================================
+        for (i = 11; i < 256; i = i + 1)
             mem[i] = 32'h00000013; // NOP
     end
 
-    // Word-aligned access
+    // Word-aligned memory fetch conversion
     assign instr = mem[addr[9:2]];
 
 endmodule
